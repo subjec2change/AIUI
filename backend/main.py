@@ -1,9 +1,9 @@
 import base64
 import json
-import time
 import logging
+import time
 
-from fastapi import FastAPI, UploadFile, BackgroundTasks, Header
+from fastapi import FastAPI, UploadFile, BackgroundTasks, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,19 +16,44 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.post("/inference")
-async def infer(audio: UploadFile, background_tasks: BackgroundTasks,
-                conversation: str = Header(default=None)) -> FileResponse:
+async def infer(
+    audio: UploadFile,
+    background_tasks: BackgroundTasks,
+    conversation: str = Header(default=None),
+) -> FileResponse:
     logging.debug("received request")
     start_time = time.time()
 
-    user_prompt_text = await transcribe(audio)
-    ai_response_text = await get_completion(user_prompt_text, conversation)
-    ai_response_audio_filepath = await to_speech(ai_response_text, background_tasks)
+    try:
+        if not audio or not audio.filename:
+            logging.warning("received request with empty/no audio file")
+            raise HTTPException(status_code=400, detail="No audio file provided")
 
-    logging.info('total processing time: %s %s', time.time() - start_time, 'seconds')
-    return FileResponse(path=ai_response_audio_filepath, media_type="audio/mpeg",
-                        headers={"text": _construct_response_header(user_prompt_text, ai_response_text)})
+        user_prompt_text = await transcribe(audio)
+        ai_response_text = await get_completion(user_prompt_text, conversation)
+        ai_response_audio_filepath = await to_speech(ai_response_text, background_tasks)
+
+        logging.info(
+            'total processing time: %s seconds',
+            time.time() - start_time,
+        )
+        return FileResponse(
+            path=ai_response_audio_filepath,
+            media_type="audio/mpeg",
+            headers={"text": _construct_response_header(user_prompt_text, ai_response_text)},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error("inference error: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
 
 
 @app.get("/")

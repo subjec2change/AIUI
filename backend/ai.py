@@ -7,6 +7,8 @@ import time
 import openai
 
 AI_COMPLETION_MODEL = os.getenv("AI_COMPLETION_MODEL", "gpt-3.5-turbo")
+AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 LANGUAGE = os.getenv("LANGUAGE", "en")
 INITIAL_PROMPT = f"You are AIUI - a helpful assistant with a voice interface. Keep your responses very succinct and limited to a single sentence since the user is interacting with you through a voice interface. Always provide your responses in the language that corresponds to the ISO-639-1 code: {LANGUAGE}."
 
@@ -26,14 +28,39 @@ async def get_completion(user_prompt, conversation_thus_far):
     messages.extend(json.loads(base64.b64decode(conversation_thus_far)))
     messages.append({"role": "user", "content": user_prompt})
 
-    logging.debug("calling %s", AI_COMPLETION_MODEL)
-    res = await openai.ChatCompletion.acreate(model=AI_COMPLETION_MODEL, messages=messages, timeout=15)
-    logging.info("response received from %s %s %s %s", AI_COMPLETION_MODEL, "in", time.time() - start_time, "seconds")
+    logging.debug("calling %s (provider=%s)", AI_COMPLETION_MODEL, AI_PROVIDER)
 
-    completion = res['choices'][0]['message']['content']
-    logging.info('%s %s %s', AI_COMPLETION_MODEL, "response:", completion)
+    if AI_PROVIDER == "ollama":
+        completion = await _get_completion_ollama(messages)
+    else:
+        completion = await _get_completion_openai(messages)
+
+    logging.info("response received from %s in %s seconds", AI_COMPLETION_MODEL, time.time() - start_time)
+    logging.info('%s response: %s', AI_COMPLETION_MODEL, completion)
 
     return completion
+
+
+async def _get_completion_openai(messages):
+    res = await openai.chat.completions.create(
+        model=AI_COMPLETION_MODEL,
+        messages=messages,
+        timeout=15,
+    )
+    return res.choices[0].message.content
+
+
+async def _get_completion_ollama(messages):
+    logging.debug("calling LLM (ollama, model=%s)", OLLAMA_MODEL)
+    client = openai.OpenAI(
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+    )
+    res = client.chat.completions.create(
+        model=OLLAMA_MODEL,
+        messages=messages,
+    )
+    return res.choices[0].message.content
 
 
 def _is_empty(user_prompt: str):

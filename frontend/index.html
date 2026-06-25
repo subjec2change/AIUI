@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AIUI</title>
+    <script>
+      // API base URL configuration
+      // Set via VITE_API_BASE environment variable at build time,
+      // or fall back to relative path '/inference'
+      window.API_BASE = import.meta.env.VITE_API_BASE || '/inference';
+    </script>
   </head>
   <body>
     <div id="root"></div>

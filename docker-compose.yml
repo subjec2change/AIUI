@@ -1,0 +1,32 @@
+services:
+  aiui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aiui
+    environment:
+      # AI Provider: "openai" or "ollama"
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      # STT Provider: "openai" or "ollama"
+      STT_PROVIDER: ${STT_PROVIDER:-openai}
+      # AI completion model (OpenAI models)
+      AI_COMPLETION_MODEL: ${AI_COMPLETION_MODEL:-gpt-3.5-turbo}
+      # OpenAI API key (required when AI_PROVIDER=openai)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # TTS Provider: gTTS, ELEVENLABS, STREAMELEMENTS, EDGETTS, OLLAMA
+      TTS_PROVIDER: ${TTS_PROVIDER:-EDGETTS}
+      # ElevenLabs settings
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE: ${ELEVENLABS_VOICE:-EXAVITQu4vr4xnSDxMaL}
+      # Edge TTS voice
+      EDGETTS_VOICE: ${EDGETTS_VOICE:-en-US-EricNeural}
+      # Ollama settings
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # Language (ISO-639-1 code)
+      LANGUAGE: ${LANGUAGE:-en}
+      # Worker count
+      MAX_WORKERS: ${MAX_WORKERS:-5}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
